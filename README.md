@@ -53,7 +53,7 @@ Transform your resume with AI-powered insights and match it perfectly to job des
 
 | Feature | Description |
 |---------|-------------|
-| **Resume Upload** | Support for PDF and DOCX formats |
+| **Resume Upload** | Support for PDF  formats |
 | **Job Description Analysis** | Paste any job description for comparison |
 | **Match Score Calculation** | AI-powered semantic similarity scoring using embeddings |
 | **Missing Skills Detection** | Automatically identifies technical and soft skills gaps |
@@ -65,7 +65,7 @@ Transform your resume with AI-powered insights and match it perfectly to job des
 ### Advanced Features
 
 - **Semantic Matching**: Uses OpenAI embeddings for deep content understanding
-- **Smart Skill Extraction**: Recognizes 100+ technical skills and frameworks
+- **Smart Skill Extraction**: Recognizes  technical skills and frameworks
 - **ATS Optimization**: Ensures resumes are applicant tracking system friendly
 - **Clean Formatting**: Removes markdown and special characters for compatibility
 - **Quantifiable Metrics**: Suggests adding numbers and achievements
@@ -252,133 +252,6 @@ ai-resume-analyzer/
 
 ---
 
-## 🔌 API Endpoints
-
-### POST `/analyze`
-
-Analyze a resume against a job description.
-
-**Request:**
-- `file`: Resume file (PDF/DOCX)
-- `job_description`: Job description text
-
-**Response:**
-```json
-{
-  "match_score": 78.5,
-  "missing_skills": ["AWS", "Docker", "Kubernetes"],
-  "suggestions": [
-    "Add these technical skills to your Skills section: AWS, Docker",
-    "Add quantifiable achievements with numbers"
-  ],
-  "message": "✅ Resume Analysis Completed Successfully"
-}
-```
-
-### POST `/rewrite`
-
-Generate an improved resume.
-
-**Request:**
-- `file`: Resume file (PDF/DOCX)
-- `job_description`: Job description text (optional)
-
-**Response:**
-```json
-{
-  "rewritten_resume": "SUMMARY\nExperienced software engineer..."
-}
-```
-
-### POST `/export-docx`
-
-Export rewritten resume as DOCX.
-
-**Request:**
-- `file`: Resume file (PDF/DOCX)
-- `job_description`: Job description text (optional)
-
-**Response:** DOCX file download
-
-### GET `/history?limit=50`
-
-Retrieve analysis history.
-
-**Response:**
-```json
-{
-  "history": [
-    {
-      "id": 1,
-      "filename": "resume.pdf",
-      "match_score": 78.5,
-      "timestamp": "2025-01-15 10:30:00"
-    }
-  ]
-}
-```
-
----
-
-## 🎨 UI Features
-
-### Modern Dark Blue Theme
-- Professional gradient background
-- Glass-morphism design elements
-- Smooth animations and hover effects
-- Responsive layout for all screen sizes
-
-### Color Scheme
-- **Primary**: Blue (#3b82f6)
-- **Background**: Dark slate (#0f172a, #1e293b)
-- **Accent**: Purple gradient
-- **Success**: Green (#10b981)
-- **Warning**: Amber (#f59e0b)
-
----
-
-## 🧪 Testing
-
-### Test the Backend
-```bash
-# Test health check
-curl http://127.0.0.1:8000/
-
-# Test analysis endpoint
-curl -X POST http://127.0.0.1:8000/analyze \
-  -F "file=@sample_resume.pdf" \
-  -F "job_description=Python developer with Django experience"
-```
-
-### Test the Frontend
-
-1. Navigate to `http://localhost:8501`
-2. Upload a sample resume
-3. Paste a job description
-4. Verify all features work correctly
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! Here's how you can help:
-
-1. **Fork the repository**
-2. **Create a feature branch**: `git checkout -b feature/amazing-feature`
-3. **Commit your changes**: `git commit -m 'Add amazing feature'`
-4. **Push to the branch**: `git push origin feature/amazing-feature`
-5. **Open a Pull Request**
-
-### Contribution Ideas
-
-- Add support for more file formats (RTF, TXT)
-- Implement user authentication
-- Add multilingual support
-- Create more detailed analytics dashboard
-- Improve skill extraction algorithms
-- Add cover letter generation
-
----
 
 ## 📝 License
 
@@ -412,25 +285,6 @@ Found a bug? Please [open an issue](https://github.com/muhammadawais131/ai-resum
 
 ---
 
-## 📊 Project Status
-
-![GitHub Stars](https://img.shields.io/github/stars/muhammadawais131/ai-resume-analyzer?style=social)
-![GitHub Forks](https://img.shields.io/github/forks/muhammadawais131/ai-resume-analyzer?style=social)
-![GitHub Issues](https://img.shields.io/github/issues/muhammadawais131/ai-resume-analyzer)
-
----
-
-## 🔮 Future Roadmap
-
-- [ ] LinkedIn profile integration
-- [ ] Cover letter generation
-- [ ] Interview question preparation based on resume
-- [ ] Multiple resume templates
-- [ ] Batch processing for multiple resumes
-- [ ] Chrome extension for one-click analysis
-- [ ] Mobile application (iOS/Android)
-
----
 
 <div align="center">
 
