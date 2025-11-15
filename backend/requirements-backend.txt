@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+python-docx
+PyMuPDF
+python-dotenv
+openai
+scikit-learn
+streamlit
+requests
+fpdf
