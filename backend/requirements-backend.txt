@@ -1,10 +1,11 @@
 fastapi
-uvicorn
+uvicorn[standard]
+python-multipart
 python-docx
 PyMuPDF
 python-dotenv
-openai
-scikit-learn
-streamlit
-requests
-fpdf
+openai>=1.40
+numpy
+pydantic>=2
+sqlalchemy>=2.0
+# for PostgreSQL, also install: psycopg[binary]

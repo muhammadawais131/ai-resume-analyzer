@@ -1,667 +1,358 @@
+"""ResumeIQ - Streamlit frontend.
+
+User journey:  Upload  ->  1. Your score  ->  2. Fix it  ->  3. Download (+ cover letter / interview prep)
+"""
+import re
+import uuid
+
 import streamlit as st
-import requests
-import io
-from fpdf import FPDF
-from docx import Document
 
-# Backend URL
-BACKEND_URL = "http://127.0.0.1:8000"
+import api
+import exporters
+import ui
 
-# Page Config
-st.set_page_config(
-    page_title="AI Resume Analyzer", 
-    page_icon="📄", 
-    layout="wide",
-    initial_sidebar_state="collapsed"
-)
+st.set_page_config(page_title=f"{ui.APP_NAME} · {ui.TAGLINE}", page_icon="⚡", layout="wide",
+                   initial_sidebar_state="collapsed")
+ui.inject_css()
 
-# Professional Modern CSS - Dark Blue Theme
-st.markdown("""
-<style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-    
-    * {
-        font-family: 'Inter', sans-serif;
-    }
-    
-    /* Main App Background - Professional Dark Blue */
-    .stApp {
-        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-    }
-    
-    /* Hide Streamlit branding */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
-    
-    /* Main Title */
-    h1 {
-        color: #ffffff;
-        font-weight: 700;
-        font-size: 2.5rem;
-        text-align: center;
-        padding: 2rem 0;
-        margin-bottom: 2rem;
-        text-shadow: 0 2px 4px rgba(0,0,0,0.3);
-    }
-    
-    /* Section Headers */
-    h3 {
-        color: #60a5fa;
-        font-weight: 600;
-        font-size: 1.5rem;
-        margin: 2rem 0 1rem 0;
-    }
-    
-    /* Form Container */
-    .stForm {
-        background: rgba(255, 255, 255, 0.95);
-        padding: 2.5rem;
-        border-radius: 16px;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-    }
-    
-    /* File Uploader */
-    .stFileUploader {
-        background: #f1f5f9;
-        border: 2px dashed #3b82f6;
-        border-radius: 12px;
-        padding: 2rem;
-    }
-    
-    .stFileUploader label {
-        color: #1e293b !important;
-        font-weight: 600;
-    }
-    
-    .stFileUploader div[data-testid="stFileUploaderDropzone"] {
-        color: #1e293b !important;
-    }
-    
-    .stFileUploader div[data-testid="stFileUploaderDropzone"] p {
-        color: #1e293b !important;
-    }
-    
-    .stFileUploader div[data-testid="stFileUploaderDropzone"] small {
-        color: #475569 !important;
-    }
-    
-    /* Uploaded file name */
-    .stFileUploader section[data-testid="stFileUploaderFileData"] {
-        color: #1e293b !important;
-    }
-    
-    .stFileUploader section[data-testid="stFileUploaderFileData"] span {
-        color: #1e293b !important;
-    }
-    
-    .stFileUploader div[data-testid="stFileUploaderFileName"] {
-        color: #1e293b !important;
-    }
-    
-    /* All text inside file uploader */
-    .stFileUploader * {
-        color: #1e293b !important;
-    }
-    
-    .stFileUploader button {
-        color: #3b82f6 !important;
-    }
-    
-    /* Text Area */
-    .stTextArea textarea {
-        border: 2px solid #e2e8f0;
-        border-radius: 10px;
-        background: #f8fafc;
-        color: #1e293b !important;
-        font-size: 15px;
-        padding: 1rem;
-        caret-color: #1e293b !important;
-        cursor: text;
-    }
-    
-    .stTextArea textarea:focus {
-        border-color: #3b82f6 !important;
-        outline: none !important;
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
-        caret-color: #1e293b !important;
-    }
-    
-    .stTextArea textarea::placeholder {
-        color: #94a3b8 !important;
-    }
-    
-    .stTextArea label {
-        color: #1e293b !important;
-        font-weight: 600;
-        font-size: 16px;
-    }
-    
-    .stTextArea div[data-baseweb="base-input"] {
-        color: #1e293b !important;
-    }
-    
-    /* Ensure cursor is visible */
-    @keyframes blink-caret {
-        from, to { border-color: transparent; }
-        50% { border-color: #1e293b; }
-    }
-    
-    /* Primary Button */
-    .stButton button {
-        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-        color: white !important;
-        border: none;
-        padding: 1rem 3rem;
-        border-radius: 12px;
-        font-weight: 600;
-        font-size: 18px;
-        width: 100%;
-        box-shadow: 0 4px 16px rgba(59, 130, 246, 0.4);
-        transition: all 0.3s ease;
-    }
-    
-    .stButton button:hover {
-        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-        box-shadow: 0 6px 24px rgba(59, 130, 246, 0.6);
-        transform: translateY(-2px);
-    }
-    
-    /* Download Buttons */
-    .stDownloadButton button {
-        background: white;
-        color: #3b82f6 !important;
-        border: 2px solid #3b82f6;
-        padding: 0.875rem 2rem;
-        border-radius: 10px;
-        font-weight: 600;
-        font-size: 16px;
-        transition: all 0.3s ease;
-        width: 100%;
-    }
-    
-    .stDownloadButton button:hover {
-        background: #3b82f6;
-        color: white !important;
-        box-shadow: 0 4px 16px rgba(59, 130, 246, 0.4);
-        transform: translateY(-2px);
-    }
-    
-    /* Success/Info/Warning Messages */
-    .stSuccess {
-        background: rgba(16, 185, 129, 0.15);
-        border-left: 4px solid #10b981;
-        border-radius: 8px;
-        padding: 1rem;
-        color: #ffffff !important;
-    }
-    
-    .stSuccess > div {
-        color: #ffffff !important;
-    }
-    
-    .stInfo {
-        background: rgba(59, 130, 246, 0.15);
-        border-left: 4px solid #3b82f6;
-        border-radius: 8px;
-        padding: 1rem;
-        color: #ffffff !important;
-    }
-    
-    .stInfo > div {
-        color: #ffffff !important;
-    }
-    
-    .stWarning {
-        background: rgba(245, 158, 11, 0.15);
-        border-left: 4px solid #f59e0b;
-        border-radius: 8px;
-        padding: 1rem;
-        color: #ffffff !important;
-    }
-    
-    .stWarning > div {
-        color: #ffffff !important;
-    }
-    
-    .stError {
-        background: rgba(239, 68, 68, 0.15);
-        border-left: 4px solid #ef4444;
-        border-radius: 8px;
-        padding: 1rem;
-        color: #ffffff !important;
-    }
-    
-    .stError > div {
-        color: #ffffff !important;
-    }
-    
-    /* Match Score Box - Attractive */
-    .match-score-container {
-        background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
-        padding: 3rem;
-        border-radius: 20px;
-        text-align: center;
-        box-shadow: 0 10px 40px rgba(59, 130, 246, 0.5);
-        margin: 2rem 0;
-        border: 1px solid rgba(255, 255, 255, 0.2);
-    }
-    
-    .match-score-container h2 {
-        color: #ffffff;
-        font-size: 1.5rem;
-        font-weight: 600;
-        margin: 0 0 1rem 0;
-        opacity: 0.95;
-    }
-    
-    .match-score-container .score {
-        color: #ffffff;
-        font-size: 4.5rem;
-        font-weight: 800;
-        margin: 0.5rem 0;
-        text-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    }
-    
-    .match-score-container p {
-        color: #ffffff;
-        font-size: 1.1rem;
-        margin: 0;
-        opacity: 0.9;
-    }
-    
-    /* Suggestions Container */
-    .suggestions-container {
-        background: rgba(255, 255, 255, 0.95);
-        border-radius: 16px;
-        padding: 2rem;
-        margin: 1.5rem 0;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-    }
-    
-    .suggestions-container h3 {
-        color: #1e293b !important;
-        margin-top: 0;
-    }
-    
-    .suggestions-container ul {
-        list-style: none;
-        padding: 0;
-        margin: 0;
-    }
-    
-    .suggestions-container li {
-        background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-        border-left: 4px solid #3b82f6;
-        padding: 1.25rem;
-        margin: 1rem 0;
-        border-radius: 10px;
-        color: #1e293b !important;
-        font-size: 15px;
-        line-height: 1.7;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-    }
-    
-    /* Missing Skills Container */
-    .missing-skills-container {
-        background: rgba(255, 255, 255, 0.95);
-        border-radius: 16px;
-        padding: 2rem;
-        margin: 1.5rem 0;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-    }
-    
-    .missing-skills-container h3 {
-        color: #1e293b !important;
-        margin-top: 0;
-    }
-    
-    .missing-skills-container ul {
-        list-style: none;
-        padding: 0;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.75rem;
-    }
-    
-    .missing-skills-container li {
-        background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
-        color: #dc2626 !important;
-        padding: 0.75rem 1.5rem;
-        border-radius: 25px;
-        font-weight: 600;
-        font-size: 14px;
-        border: 2px solid #fca5a5;
-        box-shadow: 0 2px 8px rgba(220, 38, 38, 0.15);
-        transition: all 0.3s ease;
-    }
-    
-    .missing-skills-container li:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(220, 38, 38, 0.25);
-    }
-    
-    /* Preview Container */
-    .preview-container {
-        background: rgba(255, 255, 255, 0.95);
-        border-radius: 16px;
-        padding: 2rem;
-        margin: 1.5rem 0;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-    }
-    
-    .preview-container h3 {
-        color: #1e293b !important;
-        margin-top: 0;
-    }
-    
-    .preview-container textarea {
-        color: #1e293b !important;
-    }
-    
-    .preview-container label {
-        color: #1e293b !important;
-    }
-    
-    /* Export Section */
-    .export-section {
-        background: rgba(255, 255, 255, 0.95);
-        border-radius: 16px;
-        padding: 2.5rem;
-        margin: 2rem 0;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-    }
-    
-    .export-section h3 {
-        color: #1e293b !important;
-        margin-top: 0;
-        font-size: 1.75rem;
-    }
-    
-    .export-section p {
-        color: #1e293b !important;
-    }
-    
-    .export-section div {
-        color: #1e293b !important;
-    }
-    
-    /* Divider */
-    hr {
-        border: none;
-        height: 2px;
-        background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.5), transparent);
-        margin: 3rem 0;
-    }
-    
-    /* Spinner */
-    .stSpinner > div {
-        border-top-color: #3b82f6;
-    }
-    
-    /* Text in preview */
-    .stTextArea [data-baseweb="textarea"] {
-        background: #f8fafc;
-        border: 2px solid #cbd5e1;
-        color: #1e293b !important;
-        caret-color: #1e293b !important;
-        cursor: text;
-    }
-    
-    .stTextArea [data-baseweb="textarea"]:focus {
-        border-color: #3b82f6 !important;
-        outline: none !important;
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
-        caret-color: #1e293b !important;
-    }
-    
-    /* Form submit button text */
-    .stFormSubmitButton button {
-        color: white !important;
-    }
-    
-    /* Ensure all paragraph text in white containers is dark */
-    .suggestions-container p,
-    .missing-skills-container p,
-    .preview-container p,
-    .export-section p {
-        color: #1e293b !important;
-    }
-</style>
-""", unsafe_allow_html=True)
+STEPS = ["① Your score", "② Fix it", "③ Download"]
+DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+TOP_FIXES = 5
 
-st.title("📄 AI Resume Analyzer & Optimizer")
+ss = st.session_state
+for key, default in {"client_id": uuid.uuid4().hex, "report": None, "rewrite": None,
+                     "rewrite_score": None, "cover": None, "questions": None, "done": set(),
+                     "step_nav": STEPS[0], "last_step": STEPS[0]}.items():
+    ss.setdefault(key, default)
 
-# Initialize session state
-if 'analysis_result' not in st.session_state:
-    st.session_state.analysis_result = None
-if 'uploaded_file_data' not in st.session_state:
-    st.session_state.uploaded_file_data = None
-if 'job_description_data' not in st.session_state:
-    st.session_state.job_description_data = None
-if 'rewritten_resume' not in st.session_state:
-    st.session_state.rewritten_resume = None
 
-# ---- Resume Analysis Section ----
-with st.form("resume_form"):
-    uploaded_file = st.file_uploader("📄 Upload your resume (PDF or DOCX)", type=["pdf", "docx"])
-    job_description = st.text_area("💼 Paste Job Description Here", height=180, placeholder="Paste the complete job description here...")
-    submitted = st.form_submit_button("🚀 Analyze Resume")
+# --------------------------------------------------------------------------- state helpers
+def reset_outputs():
+    ss.rewrite = ss.rewrite_score = ss.cover = ss.questions = None
+    ss.done = set()
+    ss.step_nav = ss.last_step = STEPS[0]
+    for k in list(ss.keys()):
+        if k in ("rewrite_edit", "cover_edit") or str(k).startswith("done_"):
+            del ss[k]
 
-if submitted and uploaded_file and job_description:
-    st.session_state.uploaded_file_data = {
-        'name': uploaded_file.name,
-        'type': uploaded_file.type,
-        'content': uploaded_file.getvalue()
-    }
-    st.session_state.job_description_data = job_description
-    
-    with st.spinner("Analyzing resume... please wait"):
-        files = {"file": (uploaded_file.name, uploaded_file, uploaded_file.type)}
-        data = {"job_description": job_description}
-        try:
-            res = requests.post(f"{BACKEND_URL}/analyze", files=files, data=data, timeout=120)
-            if res.status_code == 200:
-                result = res.json()
-                st.session_state.analysis_result = result
-                st.success(result.get("message", "✅ Analysis completed successfully!"))
 
-                # Match Score Display
-                st.markdown(f"""
-                <div class="match-score-container">
-                    <h2>Match Score</h2>
-                    <div class="score">{result['match_score']}%</div>
-                    <p>Resume alignment with job requirements</p>
-                </div>
-                """, unsafe_allow_html=True)
+def new_scan():
+    ss.report = None
+    reset_outputs()
 
-                # Professional Suggestions
-                st.markdown('<div class="suggestions-container">', unsafe_allow_html=True)
-                st.markdown("### 💡Suggestions")
-                if result.get("suggestions"):
-                    suggestions_html = '<ul>'
-                    for suggestion in result["suggestions"]:
-                        suggestions_html += f"<li>{suggestion}</li>"
-                    suggestions_html += "</ul>"
-                    st.markdown(suggestions_html, unsafe_allow_html=True)
+
+def go_to(step_index):
+    ss.step_nav = ss.last_step = STEPS[step_index]
+
+
+def on_step_change():
+    # A segmented control can be "un-selected"; keep the current step instead.
+    if ss.step_nav is None:
+        ss.step_nav = ss.last_step
+    ss.last_step = ss.step_nav
+
+
+def open_scan(analysis_id):
+    data, err = api.load(analysis_id, ss.client_id)
+    if err:
+        st.toast(f"Could not open this scan: {err}", icon="⚠️")
+        return
+    ss.report = data
+    reset_outputs()
+
+
+@st.cache_data(ttl=20, show_spinner=False)
+def cached_health():
+    return api.health()
+
+
+def slug(text, default="resume"):
+    return re.sub(r"[^A-Za-z0-9]+", "_", text or "").strip("_")[:40] or default
+
+
+health, health_err = cached_health()
+ai_on = bool(health and health.get("ai_enabled"))
+
+
+# =========================================================================== landing
+def landing():
+    ui.nav(health is not None, ai_on)
+    ui.hero()
+
+    with st.container(key="card_scan"):
+        left, right = st.columns([1, 1.2], gap="large")
+        with left:
+            ui.label("01", "Your resume")
+            file = st.file_uploader("Resume", type=["pdf", "docx"], label_visibility="collapsed",
+                                    help="PDF or DOCX, max 10 MB")
+            st.caption("PDF or Word · max 10 MB · 🔒 private")
+        with right:
+            ui.label("02", "Job description", optional="optional")
+            jd = st.text_area("Job description", height=158, label_visibility="collapsed",
+                              placeholder="Paste the job post here for a match score and tailored tips.\n\n"
+                                          "No job yet? Leave it empty for a general resume check.")
+        scan = st.button("Scan my resume  →", type="primary", width="stretch", key="scan_btn",
+                         disabled=health is None)
+
+    if health is None:
+        st.error(f"The ResumeIQ API is not reachable. {health_err or ''}\n\n"
+                 "Start the app with `.\\run.ps1` from the project folder.", icon=":material/cloud_off:")
+
+    if scan:
+        if not file:
+            st.toast("Add your resume first 👆", icon="📄")
+        else:
+            with st.status("Scanning your resume...", expanded=True) as status:
+                st.write("Reading your resume...")
+                st.write("Running ATS checks and matching keywords...")
+                if ai_on:
+                    st.write("AI recruiter is reviewing it (about 20 seconds)...")
+                data, err = api.analyze(file.name, file.getvalue(), file.type, jd, ss.client_id)
+                if err:
+                    status.update(label="Scan failed", state="error")
+                    st.error(err)
                 else:
-                    st.info("No suggestions found — great job!")
-                st.markdown('</div>', unsafe_allow_html=True)
+                    status.update(label="Done!", state="complete")
+                    ss.report = data
+                    reset_outputs()
+                    st.rerun()
 
-                # Missing Skills Section
-                st.markdown('<div class="missing-skills-container">', unsafe_allow_html=True)
-                st.markdown("### ❌ Missing Skills")
-                if result.get("missing_skills"):
-                    skills_html = '<ul>'
-                    for skill in result["missing_skills"]:
-                        skills_html += f"<li>{skill}</li>"
-                    skills_html += "</ul>"
-                    st.markdown(skills_html, unsafe_allow_html=True)
+    ui.how_it_works()
+
+    history, _ = api.history(ss.client_id) if health else ([], None)
+    if history:
+        st.write("")
+        st.caption("YOUR RECENT SCANS (only visible to you)")
+        cols = st.columns(min(len(history), 5))
+        for col, item in zip(cols, history):
+            label = item.get("target_role") or item.get("filename") or "Resume"
+            col.button(f"{item['score']} · {label[:22]}", key=f"h_{item['id']}", width="stretch",
+                       on_click=open_scan, args=(item["id"],))
+    ui.footer()
+
+
+# =========================================================================== step 1: score
+def step_score(r):
+    ai = r.get("ai") or {}
+    c1, c2 = st.columns([1.3, 1], gap="medium")
+    with c1, st.container(border=True, height="stretch"):
+        ui.score_card(r)
+    with c2, st.container(border=True, height="stretch"):
+        ui.score_bars(r["scores"])
+
+    kw = r.get("keywords")
+    k1, k2 = st.columns([1.6, 1], gap="medium")
+    with k1, st.container(border=True, height="stretch"):
+        if kw and kw.get("total"):
+            ui.section(f"Keywords · {len(kw['matched'])} of {kw['total']} found",
+                       "Recruiters' software searches resumes for these words from the job post. "
+                       "Add the missing ones you really have.")
+            st.progress(kw["match_rate"] / 100, text=f"{kw['match_rate']}% match · aim for 70%+")
+            covered = kw.get("covered") or []
+            st.html('<div class="riq-sub" style="margin:.6rem 0 .4rem">Missing from your resume</div>'
+                    + (ui.chips(kw["missing"], "bad") if kw["missing"] else
+                       '<span class="riq-sub" style="color:#6ee7b7">🎉 Nothing missing. You have every keyword.</span>')
+                    + '<div class="riq-sub" style="margin:1rem 0 .4rem">Already in your resume</div>'
+                    + ui.chips(kw["matched"], "ok")
+                    + ('<div class="riq-sub" style="margin:1rem 0 .4rem">Not needed: the job asks for '
+                       '<i>one of</i> these, and you already have an alternative</div>'
+                       + ui.chips(covered, "alt") if covered else ""))
+        else:
+            ui.section("Keywords", "Add a job description to see which keywords you're missing for a specific job.")
+            st.button("Scan again with a job description", icon=":material/add:", on_click=new_scan)
+    with k2, st.container(border=True, height="stretch"):
+        strengths = ai.get("strengths") or [c["label"] for c in r.get("checks", []) if c["passed"]][:5]
+        ui.checklist_items("What's working", strengths)
+
+    st.write("")
+    n = len(fix_items(r))
+    st.button(f"Next: see your {n} fixes  →", type="primary", width="stretch", on_click=go_to, args=(1,))
+
+
+# =========================================================================== step 2: fix
+def fix_items(r):
+    ai = r.get("ai") or {}
+    items = [{"severity": s["priority"], "category": s["category"], "title": s["title"],
+              "detail": s["detail"], "fix": "", "example": s.get("example", "")}
+             for s in ai.get("suggestions", [])]
+    items += r.get("issues", [])
+    order = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+    return sorted(items, key=lambda i: order.get(i["severity"], 2))
+
+
+def render_fix(idx, item):
+    done = idx in ss.done
+    chk, card = st.columns([0.05, 0.95], vertical_alignment="center")
+    with chk:
+        checked = st.checkbox("Done", value=done, key=f"done_{idx}", label_visibility="collapsed",
+                              help="Mark as done")
+        if checked != done:
+            (ss.done.add if checked else ss.done.discard)(idx)
+            st.rerun()
+    with card:
+        ui.fix_card(item, idx + 1, done)
+
+
+def step_fix(r):
+    ai = r.get("ai") or {}
+    items = fix_items(r)
+    with st.container(border=True):
+        if not items:
+            ui.section("🎉 Nothing to fix", "Your resume passed every check.")
+        else:
+            done_n = len(ss.done)
+            ui.section(f"Your fix list · {len(items)} items",
+                       "Sorted by impact: start at the top. Tick each one when you've updated your resume.")
+            st.progress(done_n / len(items), text=f"{done_n} of {len(items)} done")
+            for idx, item in enumerate(items[:TOP_FIXES]):
+                render_fix(idx, item)
+            if len(items) > TOP_FIXES:
+                with st.expander(f"Show {len(items) - TOP_FIXES} smaller fixes"):
+                    for idx, item in enumerate(items[TOP_FIXES:], start=TOP_FIXES):
+                        render_fix(idx, item)
+
+    rewrites = ai.get("bullet_rewrites") or []
+    if rewrites:
+        with st.container(border=True):
+            ui.section("Rewrite these weak lines",
+                       "Copy the improved version into your resume. Replace any [X] with your real numbers.")
+            for b in rewrites:
+                ui.compare(b["original"], b["improved"], b.get("why"))
+                st.code(b["improved"], language=None, wrap_lines=True)
+
+    if ai.get("recommended_summary"):
+        with st.container(border=True):
+            ui.section("A better summary for the top of your resume", "Tailored to this role. Click the copy icon.")
+            st.code(ai["recommended_summary"], language=None, wrap_lines=True)
+
+    st.write("")
+    st.button("Short on time? Let AI rewrite the whole resume  →", type="primary", width="stretch",
+              on_click=go_to, args=(2,))
+
+
+# =========================================================================== step 3: download
+def downloads(text, base, kind):
+    pdf_fn = exporters.resume_pdf if kind == "resume" else exporters.letter_pdf
+    docx_fn = exporters.resume_docx if kind == "resume" else exporters.letter_docx
+    c1, c2, c3 = st.columns([1.2, 1, 1])
+    c1.download_button("Download PDF", pdf_fn(text), f"{base}.pdf", "application/pdf", type="primary",
+                       icon=":material/download:", width="stretch", on_click="ignore", key=f"{kind}_pdf")
+    c2.download_button("Word (.docx)", docx_fn(text), f"{base}.docx", DOCX_MIME, width="stretch",
+                       on_click="ignore", key=f"{kind}_docx")
+    c3.download_button("Text (.txt)", text.encode("utf-8"), f"{base}.txt", "text/plain", width="stretch",
+                       on_click="ignore", key=f"{kind}_txt")
+
+
+def generate_rewrite(r):
+    """Button callback (runs before the page renders, so it may reset the text box)."""
+    missing = [k["term"] for k in (r.get("keywords") or {}).get("missing", [])]
+    with st.spinner("AI is rewriting your resume... (about 30 seconds)"):
+        data, err = api.rewrite(r["resume_text"], r.get("job_description", ""), missing, "professional")
+        ss.rewrite_err = err
+        if err:
+            return
+        ss.rewrite = ss.rewrite_edit = data["rewritten_resume"]
+        ss.rewrite_score, _ = api.score(ss.rewrite, r.get("job_description", ""), r.get("jd_keywords"))
+
+
+def step_download(r):
+    ai = r.get("ai") or {}
+    name = slug(ai.get("candidate_name"), "resume")
+    with st.container(border=True):
+        ui.section("Your improved resume",
+                   "AI rewrites your resume in a clean, ATS-friendly format, tailored to the job. "
+                   "It only uses your real experience.")
+        if ss.get("rewrite_err"):
+            st.error(ss.rewrite_err)
+        if not ai_on:
+            st.info("This needs an OpenAI API key in the `.env` file.", icon=":material/key_off:")
+        elif not ss.rewrite:
+            st.button("✨ Create my improved resume", type="primary", width="stretch", on_click=generate_rewrite,
+                      args=(r,))
+        else:
+            if ss.rewrite_score:
+                ui.delta(r["overall_score"], ss.rewrite_score["overall_score"])
+                still_missing = [k["term"] for k in (ss.rewrite_score.get("keywords") or {}).get("missing", [])]
+                if still_missing:
+                    st.info(f"**Not added on purpose:** {', '.join(still_missing)}. The AI only adds skills your "
+                            "resume shows you have, so you won't be caught out in an interview. If you do have "
+                            "these skills, add them yourself in the box below.", icon=":material/verified_user:")
+                st.write("")
+            text = st.text_area("Edit before downloading", key="rewrite_edit", height=420,
+                                help="You can edit anything here. Downloads use this text.")
+            if "[X]" in text:
+                st.warning(f"Replace the {text.count('[X]')} **[X]** placeholder(s) with your real numbers "
+                           "before downloading.", icon=":material/edit:")
+            downloads(text, f"{name}_resume", "resume")
+            st.button("Try again", icon=":material/refresh:", on_click=generate_rewrite, args=(r,))
+
+    st.write("")
+    ui.section("Applying for this job? Two more things that help")
+    with st.expander("✉️  Write a cover letter", expanded=False):
+        if not ai_on:
+            st.info("Needs an OpenAI API key.", icon=":material/key_off:")
+        elif not r.get("has_job_description"):
+            st.info("A cover letter needs the job description. Start a new scan and paste the job post.")
+        else:
+            company = st.text_input("Company name", placeholder="e.g. Acme Inc.")
+            if st.button("Write my cover letter", type="primary"):
+                with st.spinner("Writing..."):
+                    data, err = api.cover_letter(r["resume_text"], r["job_description"], company, "",
+                                                 "professional", "medium")
+                if err:
+                    st.error(err)
                 else:
-                    st.success("✅ All key skills covered!")
-                st.markdown('</div>', unsafe_allow_html=True)
+                    ss.cover = ss.cover_edit = data["cover_letter"]
+            if ss.cover:
+                text = st.text_area("Cover letter", key="cover_edit", height=360, label_visibility="collapsed")
+                downloads(text, f"{name}_cover_letter", "letter")
 
-                # Get rewritten resume
-                with st.spinner("Generating improved resume..."):
-                    rewrite_files = {"file": (st.session_state.uploaded_file_data['name'], 
-                                             io.BytesIO(st.session_state.uploaded_file_data['content']), 
-                                             st.session_state.uploaded_file_data['type'])}
-                    rewrite_data = {"job_description": st.session_state.job_description_data}
-                    try:
-                        rewrite_res = requests.post(f"{BACKEND_URL}/rewrite", 
-                                                   files=rewrite_files, 
-                                                   data=rewrite_data, 
-                                                   timeout=120)
-                        if rewrite_res.status_code == 200:
-                            rewrite_result = rewrite_res.json()
-                            rewritten_text = rewrite_result.get("rewritten_resume", "")
-                            
-                            # Clean text
-                            rewritten_text = rewritten_text.replace("", "")
-                            rewritten_text = rewritten_text.replace("*", "")
-                            rewritten_text = rewritten_text.replace("###", "")
-                            rewritten_text = rewritten_text.replace("##", "")
-                            rewritten_text = rewritten_text.replace("#", "")
-                            
-                            st.session_state.rewritten_resume = rewritten_text
-                        else:
-                            st.warning("⚠ Could not generate rewritten resume.")
-                            st.session_state.rewritten_resume = None
-                    except requests.exceptions.RequestException as e:
-                        st.warning(f"⚠ Rewrite service unavailable.")
-                        st.session_state.rewritten_resume = None
+    with st.expander("🎤  Practice likely interview questions", expanded=False):
+        if not ai_on:
+            st.info("Needs an OpenAI API key.", icon=":material/key_off:")
+        else:
+            if not ss.questions and st.button("Show me the questions", type="primary"):
+                with st.spinner("Preparing questions..."):
+                    data, err = api.interview(r["resume_text"], r.get("job_description", ""))
+                if err:
+                    st.error(err)
+                else:
+                    ss.questions = data["questions"]
+            for i, q in enumerate(ss.questions or [], 1):
+                st.markdown(f"**{i}. {q['question']}**")
+                st.caption(f"{q['type']} · Why they ask: {q['why']}")
+                st.success(f"**How to answer:** {q['tip']}", icon=":material/lightbulb:")
 
-                # Resume Preview
-                if st.session_state.rewritten_resume:
-                    st.markdown('<div class="preview-container">', unsafe_allow_html=True)
-                    st.markdown("### 📝 AI-Rewritten Resume Preview")
-                    st.text_area("Preview", st.session_state.rewritten_resume, height=300, key="preview_area")
-                    st.markdown('</div>', unsafe_allow_html=True)
+    st.write("")
+    st.download_button("Download my full score report (PDF)", exporters.report_pdf(r), f"{name}_ATS_report.pdf",
+                       "application/pdf", icon=":material/summarize:", on_click="ignore")
 
-            else:
-                st.error(f"Error: {res.text}")
-        except requests.exceptions.RequestException as e:
-            st.error(f"🚫 Error contacting backend: {e}")
 
-# ---- Export Section ----
-st.divider()
+# =========================================================================== results page
+def results():
+    r = ss.report
+    left, right = st.columns([4, 1], vertical_alignment="center")
+    with left:
+        ui.nav(True, ai_on, show_status=False)
+    with right:
+        st.button("New scan", icon=":material/add:", width="stretch", on_click=new_scan)
 
-st.markdown('<div class="export-section">', unsafe_allow_html=True)
-st.markdown("### 📤 Export Improved Resume")
+    ai = r.get("ai") or {}
+    role = ai.get("target_role") if r.get("has_job_description") else "General resume check"
+    st.caption(f"{r.get('filename', '')}  ·  {role or ''}")
+    if not r.get("ai_available"):
+        st.warning("AI feedback is unavailable right now (check the OpenAI key). Your score comes from the "
+                   "built-in ATS checks.", icon=":material/info:")
 
-if st.session_state.rewritten_resume:
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        if st.button("📄 Export as PDF", key="export_pdf_btn"):
-            with st.spinner("Generating PDF..."):
-                try:
-                    pdf = FPDF()
-                    pdf.add_page()
-                    pdf.set_auto_page_break(auto=True, margin=15)
-                    pdf.set_margins(15, 15, 15)
-                    
-                    resume_text = st.session_state.rewritten_resume
-                    resume_text = resume_text.replace('•', '-').replace('●', '-').replace('○', '-').replace('■', '-').replace('?', '-')
-                    
-                    sections = resume_text.split('\n\n')
-                    
-                    for section in sections:
-                        if not section.strip():
-                            continue
-                            
-                        lines = section.split('\n')
-                        first_line = lines[0].strip()
-                        is_heading = (
-                            first_line.isupper() or 
-                            any(first_line.upper().startswith(h) for h in 
-                                ['SUMMARY', 'WORK EXPERIENCE', 'EXPERIENCE', 'SKILLS', 
-                                 'EDUCATION', 'PROFESSIONAL', 'CONTACT', 'PROJECTS'])
-                        )
-                        
-                        if is_heading:
-                            pdf.set_font("Arial", 'B', 14)
-                            clean_header = first_line.encode('ascii', 'ignore').decode('ascii')
-                            pdf.cell(0, 10, clean_header, ln=True)
-                            pdf.ln(2)
-                            
-                            pdf.set_font("Arial", size=10)
-                            for line in lines[1:]:
-                                if line.strip():
-                                    clean_line = line.strip()
-                                    if clean_line.startswith('-'):
-                                        clean_line = '  - ' + clean_line.lstrip('-').strip()
-                                    clean_line = clean_line.encode('ascii', 'ignore').decode('ascii')
-                                    pdf.multi_cell(0, 5, clean_line)
-                        else:
-                            pdf.set_font("Arial", size=10)
-                            for line in lines:
-                                if line.strip():
-                                    clean_line = line.strip()
-                                    if clean_line.startswith('-'):
-                                        clean_line = '  - ' + clean_line.lstrip('-').strip()
-                                    clean_line = clean_line.encode('ascii', 'ignore').decode('ascii')
-                                    pdf.multi_cell(0, 5, clean_line)
-                        
-                        pdf.ln(3)
-                    
-                    pdf_output = pdf.output(dest='S').encode('latin-1')
-                    
-                    st.success("✅ PDF generated successfully!")
-                    st.download_button(
-                        "⬇ Download PDF", 
-                        data=pdf_output, 
-                        file_name="improved_resume.pdf",
-                        mime="application/pdf",
-                        key="download_pdf_btn"
-                    )
-                except Exception as e:
-                    st.error(f"❌ Failed to generate PDF: {e}")
-    
-    with col2:
-        if st.button("📄 Export as DOCX", key="export_docx_btn"):
-            with st.spinner("Generating DOCX..."):
-                try:
-                    doc = Document()
-                    
-                    resume_text = st.session_state.rewritten_resume
-                    parts = [p.strip() for p in resume_text.split("\n\n") if p.strip()]
-                    
-                    for p in parts:
-                        if any(header in p.lower()[:30] for header in ["summary", "work experience", "skills", "education", "professional summary"]):
-                            lines = p.split("\n")
-                            doc.add_heading(lines[0].strip(), level=2)
-                            for line in lines[1:]:
-                                if line.strip():
-                                    if line.strip().startswith("-") or line.strip().startswith("•"):
-                                        doc.add_paragraph(line.strip().lstrip("-•").strip(), style='List Bullet')
-                                    else:
-                                        doc.add_paragraph(line.strip())
-                        else:
-                            for line in p.split("\n"):
-                                if line.strip():
-                                    if line.strip().startswith("-") or line.strip().startswith("•"):
-                                        doc.add_paragraph(line.strip().lstrip("-•").strip(), style='List Bullet')
-                                    else:
-                                        doc.add_paragraph(line.strip())
-                    
-                    docx_output = io.BytesIO()
-                    doc.save(docx_output)
-                    docx_output.seek(0)
-                    
-                    st.success("✅ DOCX generated successfully!")
-                    st.download_button(
-                        "⬇ Download DOCX", 
-                        data=docx_output.getvalue(), 
-                        file_name="improved_resume.docx",
-                        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                        key="download_docx_btn"
-                    )
-                except Exception as e:
-                    st.error(f"❌ Failed to generate DOCX: {e}")
+    st.segmented_control("Step", STEPS, key="step_nav", label_visibility="collapsed",
+                         on_change=on_step_change, width="stretch")
+    st.write("")
+    step = STEPS.index(ss.step_nav or ss.last_step)
+    [step_score, step_fix, step_download][step](r)
+    ui.footer()
+
+
+if ss.report:
+    results()
 else:
-    st.info("👆 Please analyze a resume first to enable export options.")
-
-st.markdown('</div>', unsafe_allow_html=True)
+    landing()
