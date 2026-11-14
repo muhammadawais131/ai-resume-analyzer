@@ -3,4 +3,8 @@ __pycache__/
 .env
 *.pyc
 .DS_Store
-resumes.db
+*.db
+# uploaded / generated resumes (personal data)
+backend/temp_*
+backend/improved_resume_*
+data/samples/
