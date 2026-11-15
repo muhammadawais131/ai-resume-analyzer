@@ -1,7 +1,7 @@
 """Analysis history storage (SQLAlchemy).
 
 Uses SQLite by default (zero setup). For production set DATABASE_URL, e.g.
-    DATABASE_URL=postgresql+psycopg://user:password@host:5432/resumeiq
+    DATABASE_URL=postgresql+psycopg://user:password@host:5432/shortlistly
 Every record belongs to a ``client_id`` (one per browser session), so users only ever see
 their own scans.
 """
@@ -13,7 +13,7 @@ from sqlalchemy import JSON, DateTime, Float, Integer, String, create_engine, de
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
 
 DATA_DIR = Path(__file__).resolve().parent / "data"
-DATABASE_URL = os.getenv("DATABASE_URL") or f"sqlite:///{(DATA_DIR / 'resumeiq.db').as_posix()}"
+DATABASE_URL = os.getenv("DATABASE_URL") or f"sqlite:///{(DATA_DIR / 'shortlistly.db').as_posix()}"
 
 if DATABASE_URL.startswith("sqlite"):
     DATA_DIR.mkdir(exist_ok=True)

@@ -1,4 +1,4 @@
-# ResumeIQ: AI Resume Analyzer & ATS Checker
+# Shortlistly: AI Resume Analyzer & ATS Checker
 
 <div align="center">
 
@@ -18,6 +18,7 @@ Get an ATS score in about 30 seconds, see exactly which keywords you're missing,
 
 ## 📋 Table of Contents
 
+- [Screenshots](#-screenshots)
 - [Overview](#-overview)
 - [Features](#-features)
 - [How Scoring Works](#-how-scoring-works)
@@ -32,10 +33,22 @@ Get an ATS score in about 30 seconds, see exactly which keywords you're missing,
 
 ---
 
+## 📸 Screenshots
+
+*Example scan of a fictional sample resume against an "AI Engineer" job post.*
+
+| Upload | ① Your score |
+|:---:|:---:|
+| ![Upload page](Media/01_home.png) | ![Score page](Media/02_score.png) |
+| **② Fix it** | **③ Download** |
+| ![Fix list](Media/03_fix.png) | ![Improved resume](Media/04_download.png) |
+
+---
+
 ## 🎯 Overview
 
 Most companies filter resumes with an **Applicant Tracking System (ATS)** before a human ever sees them.
-**ResumeIQ** shows you how your resume performs against those filters, for a specific job or in general,
+**Shortlistly** shows you how your resume performs against those filters, for a specific job or in general,
 and helps you fix it. You get a clear score, a prioritized fix list, and an AI-improved resume you can download.
 
 ### Why Use This Tool?
@@ -157,13 +170,13 @@ All settings are optional and go in `.env`:
 ```env
 OPENAI_MODEL=gpt-4o-mini                       # chat model
 OPENAI_EMBED_MODEL=text-embedding-3-small      # embedding model
-DATABASE_URL=postgresql+psycopg://user:password@localhost:5432/resumeiq   # use PostgreSQL
+DATABASE_URL=postgresql+psycopg://user:password@localhost:5432/shortlistly   # use PostgreSQL
 BACKEND_URL=http://127.0.0.1:8010              # where the frontend finds the API
 ```
 
 ### Database
 
-By default, scan history is stored in SQLite at `backend/data/resumeiq.db`, created automatically on first run.
+By default, scan history is stored in SQLite at `backend/data/shortlistly.db`, created automatically on first run.
 To use PostgreSQL, run `pip install "psycopg[binary]"` and set `DATABASE_URL`.
 
 ---

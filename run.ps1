@@ -1,4 +1,4 @@
-# Starts ResumeIQ in THIS terminal: API on port 8010 + website on port 8502.
+# Starts Shortlistly in THIS terminal: API on port 8010 + website on port 8502.
 # Usage:  .\run.ps1        (press Ctrl+C to stop both)
 $root = $PSScriptRoot
 $py = Join-Path $root "venv\Scripts\python.exe"
@@ -11,7 +11,7 @@ $api = Start-Process -FilePath $py -ArgumentList "-m", "uvicorn", "main:app", "-
 
 try {
     Set-Location $root
-    Write-Host "`n  ResumeIQ is starting... open http://localhost:8502`n" -ForegroundColor Cyan
+    Write-Host "`n  Shortlistly is starting... open http://localhost:8502`n" -ForegroundColor Cyan
     & $py -m streamlit run frontend/app.py --server.port 8502
 }
 finally {

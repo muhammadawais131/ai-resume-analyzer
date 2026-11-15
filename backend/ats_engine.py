@@ -227,10 +227,18 @@ def extract_jd_keywords(job_text: str, ai_keywords: dict | None = None):
             add(skill, "soft", c)
 
     if ai_keywords:
+        jd_stems = [_stem(t) for t in re.findall(r"[a-z0-9+#]+", jd_lower)]
         for kind, key in (("hard", "hard_skills"), ("soft", "soft_skills")):
             for term in ai_keywords.get(key, []) or []:
-                if isinstance(term, str) and term.strip():
-                    add(term, kind, count_term(jd_lower, canonical(term)) or 1)
+                if not (isinstance(term, str) and term.strip()):
+                    continue
+                c = canonical(term)
+                hits = count_term(jd_lower, c)
+                # Only keep AI keywords that really appear in the job post (exactly or as a phrase
+                # in another word form, e.g. "model deployment" <- "deploying models").
+                # The AI sometimes adds plausible skills the employer never asked for.
+                if hits or (" " in c and _fuzzy_phrase_hit(jd_stems, c, window=6)):
+                    add(term, kind, hits or 1)
 
     items = sorted(found.values(), key=lambda k: (k["type"] != "hard", -k["count"], k["term"]))
     for k in items:
@@ -301,6 +309,10 @@ def match_keywords(resume_text: str, jd_keywords):
         hits = count_term(lower, k["term"])
         if not hits and " " in k["term"] and _fuzzy_phrase_hit(stems, k["term"]):
             hits = 1
+        # Soft skills in another word form: "communication" <- "communicate", "collaborated".
+        if not hits and k["type"] == "soft" and " " not in k["term"] and len(k["term"]) >= 7:
+            root = k["term"].replace("-", "")[:-3]
+            hits = int(bool(re.search(r"\b" + re.escape(root), lower)))
         results.append((k, hits))
 
     satisfied_groups = {k.get("group") for k, hits in results if hits and k.get("group")}
@@ -346,7 +358,9 @@ def build_report(structure: dict, job_text: str = "", ai_keywords: dict | None =
                        "detail": detail, "fix": fix, "source": "ats"})
 
     # ---- Parseability
-    readable = s["word_count"] >= 120
+    # "Unreadable" means almost no text could be extracted (scanned/image PDF). A short but
+    # readable resume is handled separately by the length checks below.
+    readable = s["word_count"] >= 50
     check("ATS can read your text", readable,
           f"{s['word_count']} words extracted from the file.", "Parsing")
     if not readable:
@@ -432,7 +446,8 @@ def build_report(structure: dict, job_text: str = "", ai_keywords: dict | None =
     check("Uses bullet points", s["has_marker_bullets"],
           "Bullets are easier to scan than paragraphs.", "Impact")
     if n_b and q_ratio < 0.3:
-        issue("high", "Impact", "Quantify your achievements",
+        # Almost no numbers is serious; some numbers but not enough is a medium improvement.
+        issue("high" if q_ratio < 0.15 else "medium", "Impact", "Quantify your achievements",
               f"Only {round(q_ratio * 100)}% of your bullets include numbers. Metrics prove impact "
               "and are what recruiters remember.",
               "Add numbers: % improvement, $ saved, users served, team size, time reduced.")
@@ -521,7 +536,8 @@ def build_report(structure: dict, job_text: str = "", ai_keywords: dict | None =
         soft_missing = [m["term"] for m in missing if m["type"] == "soft"]
         if hard_missing:
             sev = "critical" if keywords["match_rate"] < 40 else "high"
-            issue(sev, "Keywords", f"Missing {len(hard_missing)} hard skills from the job post",
+            n_hm = len(hard_missing)
+            issue(sev, "Keywords", f"Missing {n_hm} hard skill{'s' if n_hm != 1 else ''} from the job post",
                   "ATS rank candidates by keyword matches. Missing: " + ", ".join(hard_missing[:10]) + ".",
                   "Add the ones you genuinely have to your Skills section AND mention them in "
                   "experience bullets showing how you used them.")

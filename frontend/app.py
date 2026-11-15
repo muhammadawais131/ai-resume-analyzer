@@ -1,4 +1,4 @@
-"""ResumeIQ - Streamlit frontend.
+"""Shortlistly - Streamlit frontend.
 
 User journey:  Upload  ->  1. Your score  ->  2. Fix it  ->  3. Download (+ cover letter / interview prep)
 """
@@ -95,7 +95,7 @@ def landing():
                          disabled=health is None)
 
     if health is None:
-        st.error(f"The ResumeIQ API is not reachable. {health_err or ''}\n\n"
+        st.error(f"The Shortlistly API is not reachable. {health_err or ''}\n\n"
                  "Start the app with `.\\run.ps1` from the project folder.", icon=":material/cloud_off:")
 
     if scan:
@@ -166,7 +166,11 @@ def step_score(r):
 
     st.write("")
     n = len(fix_items(r))
-    st.button(f"Next: see your {n} fixes  →", type="primary", width="stretch", on_click=go_to, args=(1,))
+    if n == 0:
+        st.button("Nothing to fix. Go to download  →", type="primary", width="stretch", on_click=go_to, args=(2,))
+    else:
+        label = "Next: see the 1 fix" if n == 1 else f"Next: see your {n} fixes"
+        st.button(f"{label}  →", type="primary", width="stretch", on_click=go_to, args=(1,))
 
 
 # =========================================================================== step 2: fix
@@ -197,12 +201,20 @@ def step_fix(r):
     ai = r.get("ai") or {}
     items = fix_items(r)
     with st.container(border=True):
+        important = [i for i in items if i["severity"] in ("critical", "high", "medium")]
         if not items:
-            ui.section("🎉 Nothing to fix", "Your resume passed every check.")
+            ui.section("🎉 Nothing to fix",
+                       "Your resume passed every ATS check and our AI reviewer found no real problems. "
+                       "It's ready to send.")
         else:
             done_n = len(ss.done)
-            ui.section(f"Your fix list · {len(items)} items",
-                       "Sorted by impact: start at the top. Tick each one when you've updated your resume.")
+            if not important:
+                ui.section(f"Looking good · {len(items)} optional polish item{'s' if len(items) > 1 else ''}",
+                           "No real problems found. These small tweaks are optional.")
+            else:
+                ui.section(f"Your fix list · {len(items)} item{'s' if len(items) > 1 else ''}",
+                           "Only real issues found in your resume, sorted by impact. "
+                           "Tick each one when you've updated your resume.")
             st.progress(done_n / len(items), text=f"{done_n} of {len(items)} done")
             for idx, item in enumerate(items[:TOP_FIXES]):
                 render_fix(idx, item)

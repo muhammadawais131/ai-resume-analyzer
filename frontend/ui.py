@@ -1,9 +1,9 @@
-"""Dark 'tech' design system and HTML components for the ResumeIQ UI."""
+"""Dark 'tech' design system and HTML components for the Shortlistly UI."""
 import html
 
 import streamlit as st
 
-APP_NAME = "ResumeIQ"
+APP_NAME = "Shortlistly"
 TAGLINE = "AI Resume Scanner"
 
 # severity -> (label, color)
@@ -133,6 +133,7 @@ div.st-key-card_scan { border: 1px solid rgba(139, 92, 246, .35) !important;
 
 .riq-score { display: flex; gap: 1.5rem; align-items: center; }
 .riq-ring { position: relative; flex: none; filter: drop-shadow(0 0 18px rgba(139, 92, 246, .25)); }
+.riq-ring .arc { position: absolute; inset: 0; border-radius: 50%; }
 .riq-ring .val { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; }
 .riq-ring .num { font-family: var(--mono); font-size: 2.8rem; font-weight: 700; line-height: 1; color: var(--ink); }
 .riq-ring .of { font-family: var(--mono); font-size: .68rem; color: var(--muted); letter-spacing: .08em; margin-top: .2rem; }
@@ -200,7 +201,7 @@ def nav(ok: bool, ai: bool, show_status=True):
         color, text = "#34d399", "System online"
     status = (f'<span class="riq-status" style="color:{color};border-color:{color}55"><span class="dot"></span>{text}</span>'
               if show_status else "")
-    st.html(f"""<div class="riq-nav"><div class="riq-brand"><div class="riq-logo">R</div>
+    st.html(f"""<div class="riq-nav"><div class="riq-brand"><div class="riq-logo">S</div>
       <div><div class="nm">{APP_NAME}</div><div class="tg">{TAGLINE}</div></div></div>{status}</div>""")
 
 
@@ -235,19 +236,15 @@ def section(title, sub=None):
 
 
 def ring(score: int, size=164, stroke=12):
-    r = (size - stroke) / 2
-    circ = 2 * 3.14159 * r
-    off = circ * (1 - max(0, min(100, score)) / 100)
+    """Score ring drawn with a CSS conic-gradient (Streamlit's HTML sanitizer strips SVG)."""
+    pct = max(0, min(100, score))
     c = score_color(score)
+    track = (f"background:conic-gradient({c} 0 {pct}%, #1e293b {pct}% 100%);"
+             f"-webkit-mask:radial-gradient(farthest-side, transparent calc(100% - {stroke}px), #000 calc(100% - {stroke - 1}px));"
+             f"mask:radial-gradient(farthest-side, transparent calc(100% - {stroke}px), #000 calc(100% - {stroke - 1}px));")
     return f"""<div class="riq-ring" style="width:{size}px;height:{size}px">
-    <svg width="{size}" height="{size}" viewBox="0 0 {size} {size}">
-      <defs><linearGradient id="rg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="{c}"/>
-      <stop offset="1" stop-color="{c}" stop-opacity=".55"/></linearGradient></defs>
-      <circle cx="{size/2}" cy="{size/2}" r="{r}" fill="none" stroke="rgba(148,163,184,.12)" stroke-width="{stroke}"/>
-      <circle cx="{size/2}" cy="{size/2}" r="{r}" fill="none" stroke="url(#rg)" stroke-width="{stroke}"
-        stroke-linecap="round" stroke-dasharray="{circ:.1f}" stroke-dashoffset="{off:.1f}"
-        transform="rotate(-90 {size/2} {size/2})"/>
-    </svg><div class="val"><div><div class="num">{score}</div><div class="of">/ 100</div></div></div></div>"""
+    <div class="arc" style="{track}"></div>
+    <div class="val"><div><div class="num">{score}</div><div class="of">/ 100</div></div></div></div>"""
 
 
 VERDICTS = {

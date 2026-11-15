@@ -1,6 +1,7 @@
-"""ResumeIQ API - ATS resume analysis, AI rewriting, cover letters and interview prep."""
+"""Shortlistly API - ATS resume analysis, AI rewriting, cover letters and interview prep."""
 import hashlib
 import logging
+import re
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 
@@ -17,7 +18,7 @@ from resume_parser import SUPPORTED_EXTENSIONS, extract_resume
 logging.basicConfig(level=logging.INFO)
 MAX_FILE_BYTES = 10 * 1024 * 1024
 
-app = FastAPI(title="ResumeIQ API", version="2.0.0")
+app = FastAPI(title="Shortlistly API", version="2.0.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 init_db()
 
@@ -49,13 +50,54 @@ class ChatPayload(TextPayload):
 
 
 # --------------------------------------------------------------------------- helpers
+# Topics the rule engine reports itself. AI suggestions about the same topic are duplicates.
+_TOPICS = {
+    "impact": re.compile(r"quantif|metric|number|measur|impact|result|achievement", re.I),
+    "keywords": re.compile(r"keyword|missing skill|add skill|skills? from the job", re.I),
+    "contact": re.compile(r"linkedin|contact|phone|email", re.I),
+    "summary": re.compile(r"summary|objective|profile", re.I),
+    "verbs": re.compile(r"action verb|weak phrase|responsible for", re.I),
+    "length": re.compile(r"too long|too short|length|concise", re.I),
+}
+_PRIORITY_RANK = {"high": 0, "medium": 1, "low": 2}
+
+
+def calibrate_suggestions(suggestions: list[dict], report: dict) -> list[dict]:
+    """Keep only genuine AI findings: no duplicates of rule-engine issues, and fewer, softer
+    suggestions for resumes that already score well."""
+    reported = {t for t, rx in _TOPICS.items() for i in report["issues"] if rx.search(i["title"])}
+    out = []
+    for s in suggestions:
+        text = f"{s['title']} {s['detail']}"
+        if any(rx.search(s["title"]) for t, rx in _TOPICS.items() if t in reported):
+            continue  # same topic as an ATS issue already in the list
+        if any(rx.search(text) for t, rx in _TOPICS.items() if t == "keywords"):
+            continue  # missing keywords have their own section
+        out.append(dict(s))
+
+    score = report["overall_score"]
+    if score >= 85:    # strong resume: only optional polish
+        out = out[:2]
+        for s in out:
+            s["priority"] = "low"
+    elif score >= 70:  # good resume: a few targeted improvements
+        out = out[:4]
+        for s in out:
+            if s["priority"] == "high":
+                s["priority"] = "medium"
+    return sorted(out, key=lambda s: _PRIORITY_RANK.get(s["priority"], 1))
+
+
 def run_analysis(resume_text: str, job_description: str, meta: dict, use_ai=True,
                  jd_keywords: dict | None = None) -> dict:
     structure = analyze_structure(resume_text, meta)
     review, similarity = None, None
     if use_ai and ai.ai_enabled():
+        # Issues the rule engine already reports, so the AI adds only NEW, genuine findings.
+        known = [i["title"] for i in build_report(structure)["issues"]]
         with ThreadPoolExecutor(max_workers=2) as pool:
-            f_review = pool.submit(ai.ai_review, resume_text, job_description, structure["weak_bullets"])
+            f_review = pool.submit(ai.ai_review, resume_text, job_description, structure["weak_bullets"],
+                                   known)
             f_sim = pool.submit(ai.semantic_similarity, resume_text, job_description)
             review, similarity = f_review.result(), f_sim.result()
     elif ai.ai_enabled() and job_description.strip():
@@ -69,6 +111,8 @@ def run_analysis(resume_text: str, job_description: str, meta: dict, use_ai=True
         if keywords and (keywords.get("hard_skills") or keywords.get("soft_skills")):
             save_job_keywords(jd_hash, keywords)
     report = build_report(structure, job_description, keywords, similarity)
+    if review:
+        review["suggestions"] = calibrate_suggestions(review.get("suggestions", []), report)
     report["ai"] = review
     report["ai_available"] = review is not None
     report["jd_keywords"] = keywords
@@ -97,7 +141,7 @@ def _ai_call(fn, *args, **kwargs):
 # --------------------------------------------------------------------------- routes
 @app.get("/health")
 def health():
-    return {"app": "resumeiq", "status": "ok", "ai_enabled": ai.ai_enabled(), "model": ai.CHAT_MODEL}
+    return {"app": "shortlistly", "status": "ok", "ai_enabled": ai.ai_enabled(), "model": ai.CHAT_MODEL}
 
 
 @app.post("/analyze")

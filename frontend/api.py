@@ -1,4 +1,4 @@
-"""Thin client for the ResumeIQ FastAPI backend. Every call returns (data, error_message)."""
+"""Thin client for the Shortlistly FastAPI backend. Every call returns (data, error_message)."""
 import os
 
 import requests
@@ -20,7 +20,7 @@ def _post(path, timeout=180, **kwargs):
     try:
         return _handle(requests.post(f"{BACKEND_URL}{path}", timeout=timeout, **kwargs))
     except requests.exceptions.ConnectionError:
-        return None, "Cannot reach the ResumeIQ API. Start it with: .\\run.ps1"
+        return None, "Cannot reach the Shortlistly API. Start it with: .\\run.ps1"
     except requests.exceptions.Timeout:
         return None, "The request timed out. Please try again."
     except requests.exceptions.RequestException as e:
@@ -35,10 +35,10 @@ def _get(path, timeout=10):
 
 
 def health():
-    """Returns (data, error). data is None unless the ResumeIQ API itself answered."""
+    """Returns (data, error). data is None unless the Shortlistly API itself answered."""
     data, err = _get("/health", timeout=3)
-    if data is not None and data.get("app") != "resumeiq":
-        return None, f"Another program is using {BACKEND_URL}. Run the ResumeIQ API on a free port."
+    if data is not None and data.get("app") != "shortlistly":
+        return None, f"Another program is using {BACKEND_URL}. Run the Shortlistly API on a free port."
     return data, err
 
 
