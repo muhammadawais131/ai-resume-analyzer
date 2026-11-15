@@ -265,7 +265,7 @@ Interactive API docs: http://127.0.0.1:8010/docs
 
 ## 📝 License
 
-This project is licensed under the MIT License.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
 ---
 

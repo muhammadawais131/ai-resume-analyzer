@@ -212,7 +212,7 @@ def footer():
 
 # --------------------------------------------------------------------------- landing
 def hero():
-    st.html("""<div class="riq-hero"><div class="riq-kicker">// ATS resume scanner</div>
+    st.html("""<div class="riq-hero"><div class="riq-kicker">ATS resume scanner</div>
       <h1>Will your resume pass<br>the <span>ATS filter?</span></h1>
       <p>Upload your resume and get your score in about 30 seconds. Then let AI fix it for you.</p></div>""")
 
