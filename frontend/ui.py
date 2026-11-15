@@ -7,11 +7,11 @@ APP_NAME = "Shortlistly"
 TAGLINE = "AI Resume Scanner"
 
 # severity -> (label, color)
-SEVERITY = {
-    "critical": ("Critical", "#f87171"),
-    "high": ("High", "#fb923c"),
-    "medium": ("Medium", "#fbbf24"),
-    "low": ("Low", "#38bdf8"),
+SEVERITY = {  # plain-language priority labels (same wording as the PDF report)
+    "critical": ("Fix first", "#f87171"),
+    "high": ("Fix first", "#fb923c"),
+    "medium": ("Should fix", "#fbbf24"),
+    "low": ("Nice to have", "#38bdf8"),
 }
 
 

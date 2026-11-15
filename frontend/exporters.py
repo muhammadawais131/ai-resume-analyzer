@@ -203,17 +203,41 @@ def report_pdf(report: dict) -> bytes:
         for s in ai["strengths"]:
             _pdf_bullet(pdf, s)
 
-    heading("Improvement plan")
-    items = [(s["priority"], s["title"], s["detail"]) for s in ai.get("suggestions", [])]
-    items += [(i["severity"], i["title"], i["fix"]) for i in report.get("issues", [])]
-    for sev, title, detail in items:
-        pdf.set_font("Helvetica", "B", 10)
-        pdf.multi_cell(0, 5, _latin(f"[{sev.upper()}] {title}"))
-        pdf.set_font("Helvetica", "", 9.5)
+    # Improvement plan, grouped into plain-language priority sections (same order as the app).
+    items = [(i["severity"], i["title"], i.get("fix") or i.get("detail", "")) for i in report.get("issues", [])]
+    items += [(s["priority"], s["title"], s.get("example") or s["detail"]) for s in ai.get("suggestions", [])]
+    groups = [
+        ("Fix these first", "These are likely to get your resume rejected.", ("critical", "high"), (220, 38, 38)),
+        ("Should fix", "These noticeably weaken your resume.", ("medium",), (217, 119, 6)),
+        ("Nice to have", "Optional polish.", ("low",), (100, 116, 139)),
+    ]
+    if not items:
+        heading("Improvement plan")
+        pdf.set_font("Helvetica", "", 10)
+        pdf.multi_cell(0, 5, "No issues found. Your resume is ready to send.")
+    for title, subtitle, levels, color in groups:
+        group = [it for it in items if it[0] in levels]
+        if not group:
+            continue
+        pdf.ln(2)
+        pdf.set_font("Helvetica", "B", 12)
+        pdf.set_text_color(*color)
+        pdf.cell(0, 7, _latin(f"{title} ({len(group)})"), ln=1)
+        pdf.set_font("Helvetica", "", 9)
         pdf.set_text_color(*MUTED)
-        pdf.multi_cell(0, 4.8, _latin(detail))
-        pdf.set_text_color(*INK)
+        pdf.cell(0, 4.5, _latin(subtitle), ln=1)
         pdf.ln(1.5)
+        for n, (_, item_title, detail) in enumerate(group, 1):
+            pdf.set_text_color(*INK)
+            pdf.set_font("Helvetica", "B", 10)
+            pdf.multi_cell(0, 5, _latin(f"{n}. {item_title}"))
+            if detail:
+                pdf.set_x(pdf.l_margin + 4)
+                pdf.set_font("Helvetica", "", 9.5)
+                pdf.set_text_color(*MUTED)
+                pdf.multi_cell(0, 4.8, _latin(detail))
+            pdf.ln(1.5)
+    pdf.set_text_color(*INK)
     return _pdf_bytes(pdf)
 
 

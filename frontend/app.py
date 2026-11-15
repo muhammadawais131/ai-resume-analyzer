@@ -243,7 +243,25 @@ def step_fix(r):
 
 
 # =========================================================================== step 3: download
+def persistent_text_area(label, store, key, **kwargs):
+    """A text box whose content survives switching steps.
+
+    Streamlit discards a widget's state when it isn't drawn (e.g. while the user looks at
+    another step), which used to leave the box - and every download - empty. The text is
+    therefore also kept in ``ss[store]`` and restored into the box when it comes back.
+    """
+    ss[key] = ss.get(store) or ""          # always refill the box from the permanent copy
+
+    def save():                             # every edit goes straight to the permanent copy
+        ss[store] = ss[key]
+
+    return st.text_area(label, key=key, on_change=save, **kwargs)
+
+
 def downloads(text, base, kind):
+    if not text.strip():
+        st.warning("The text box is empty, so there is nothing to download yet.", icon=":material/warning:")
+        return
     pdf_fn = exporters.resume_pdf if kind == "resume" else exporters.letter_pdf
     docx_fn = exporters.resume_docx if kind == "resume" else exporters.letter_docx
     c1, c2, c3 = st.columns([1.2, 1, 1])
@@ -290,8 +308,8 @@ def step_download(r):
                             "resume shows you have, so you won't be caught out in an interview. If you do have "
                             "these skills, add them yourself in the box below.", icon=":material/verified_user:")
                 st.write("")
-            text = st.text_area("Edit before downloading", key="rewrite_edit", height=420,
-                                help="You can edit anything here. Downloads use this text.")
+            text = persistent_text_area("Edit before downloading", "rewrite", "rewrite_edit", height=420,
+                                        help="You can edit anything here. Downloads use this text.")
             if "[X]" in text:
                 st.warning(f"Replace the {text.count('[X]')} **[X]** placeholder(s) with your real numbers "
                            "before downloading.", icon=":material/edit:")
@@ -316,7 +334,8 @@ def step_download(r):
                 else:
                     ss.cover = ss.cover_edit = data["cover_letter"]
             if ss.cover:
-                text = st.text_area("Cover letter", key="cover_edit", height=360, label_visibility="collapsed")
+                text = persistent_text_area("Cover letter", "cover", "cover_edit", height=360,
+                                            label_visibility="collapsed")
                 downloads(text, f"{name}_cover_letter", "letter")
 
     with st.expander("🎤  Practice likely interview questions", expanded=False):
