@@ -1,4 +1,4 @@
-"""Shortlistly API - ATS resume analysis, AI rewriting, cover letters and interview prep."""
+"""Passly API - ATS resume analysis, AI rewriting, cover letters and interview prep."""
 import hashlib
 import logging
 import re
@@ -18,7 +18,7 @@ from resume_parser import SUPPORTED_EXTENSIONS, extract_resume
 logging.basicConfig(level=logging.INFO)
 MAX_FILE_BYTES = 10 * 1024 * 1024
 
-app = FastAPI(title="Shortlistly API", version="2.0.0")
+app = FastAPI(title="Passly API", version="2.0.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 init_db()
 
@@ -141,7 +141,7 @@ def _ai_call(fn, *args, **kwargs):
 # --------------------------------------------------------------------------- routes
 @app.get("/health")
 def health():
-    return {"app": "shortlistly", "status": "ok", "ai_enabled": ai.ai_enabled(), "model": ai.CHAT_MODEL}
+    return {"app": "passly", "status": "ok", "ai_enabled": ai.ai_enabled(), "model": ai.CHAT_MODEL}
 
 
 @app.post("/analyze")

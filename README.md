@@ -1,4 +1,4 @@
-# Shortlistly: AI Resume Analyzer & ATS Checker
+# Passly: AI Resume Analyzer & ATS Checker
 
 <div align="center">
 
@@ -48,7 +48,7 @@ Get an ATS score in about 30 seconds, see exactly which keywords you're missing,
 ## 🎯 Overview
 
 Most companies filter resumes with an **Applicant Tracking System (ATS)** before a human ever sees them.
-**Shortlistly** shows you how your resume performs against those filters, for a specific job or in general,
+**Passly** shows you how your resume performs against those filters, for a specific job or in general,
 and helps you fix it. You get a clear score, a prioritized fix list, and an AI-improved resume you can download.
 
 ### Why Use This Tool?
@@ -170,13 +170,13 @@ All settings are optional and go in `.env`:
 ```env
 OPENAI_MODEL=gpt-4o-mini                       # chat model
 OPENAI_EMBED_MODEL=text-embedding-3-small      # embedding model
-DATABASE_URL=postgresql+psycopg://user:password@localhost:5432/shortlistly   # use PostgreSQL
+DATABASE_URL=postgresql+psycopg://user:password@localhost:5432/passly   # use PostgreSQL
 BACKEND_URL=http://127.0.0.1:8010              # where the frontend finds the API
 ```
 
 ### Database
 
-By default, scan history is stored in SQLite at `backend/data/shortlistly.db`, created automatically on first run.
+By default, scan history is stored in SQLite at `backend/data/passly.db`, created automatically on first run.
 To use PostgreSQL, run `pip install "psycopg[binary]"` and set `DATABASE_URL`.
 
 ---

@@ -1,10 +1,10 @@
-"""Dark 'tech' design system and HTML components for the Shortlistly UI."""
+"""Dark 'tech' design system and HTML components for the Passly UI."""
 import html
 
 import streamlit as st
 
-APP_NAME = "Shortlistly"
-TAGLINE = "AI Resume Scanner"
+APP_NAME = "Passly"
+TAGLINE = "Resume Analyzer"
 
 # severity -> (label, color)
 SEVERITY = {  # plain-language priority labels (same wording as the PDF report)
@@ -201,7 +201,7 @@ def nav(ok: bool, ai: bool, show_status=True):
         color, text = "#34d399", "System online"
     status = (f'<span class="riq-status" style="color:{color};border-color:{color}55"><span class="dot"></span>{text}</span>'
               if show_status else "")
-    st.html(f"""<div class="riq-nav"><div class="riq-brand"><div class="riq-logo">S</div>
+    st.html(f"""<div class="riq-nav"><div class="riq-brand"><div class="riq-logo">P</div>
       <div><div class="nm">{APP_NAME}</div><div class="tg">{TAGLINE}</div></div></div>{status}</div>""")
 
 

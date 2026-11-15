@@ -1,4 +1,4 @@
-"""Shortlistly - Streamlit frontend.
+"""Passly - Streamlit frontend.
 
 User journey:  Upload  ->  1. Your score  ->  2. Fix it  ->  3. Download (+ cover letter / interview prep)
 """
@@ -95,7 +95,7 @@ def landing():
                          disabled=health is None)
 
     if health is None:
-        st.error(f"The Shortlistly API is not reachable. {health_err or ''}\n\n"
+        st.error(f"The Passly API is not reachable. {health_err or ''}\n\n"
                  "Start the app with `.\\run.ps1` from the project folder.", icon=":material/cloud_off:")
 
     if scan:
